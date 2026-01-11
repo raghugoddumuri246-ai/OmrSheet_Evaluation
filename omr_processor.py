@@ -807,7 +807,8 @@ class OMRProcessor:
             
             # Prepare Variants
             base_img = cv2.bitwise_not(best_digit_img)
-            base_img = cv2.resize(base_img, None, fx=3.0, fy=3.0, interpolation=cv2.INTER_CUBIC)
+            # Use INTER_CUBIC with 2x scale (proved better than 4x Nearest in debug)
+            base_img = cv2.resize(base_img, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)
             base_img = cv2.copyMakeBorder(base_img, 20, 20, 20, 20, cv2.BORDER_CONSTANT, value=255)
             
             kernel = np.ones((2,2),np.uint8)
@@ -819,16 +820,35 @@ class OMRProcessor:
             # Try DILATED last (If stroke is too thick)
             
             found_digit = "?"
-            for name, img_variant in [("eroded", img_eroded), ("original", base_img), ("dilated", img_dilated)]:
-                try:
-                    txt = pytesseract.image_to_string(img_variant, config='--psm 10 --oem 3 -c tessedit_char_whitelist=0123456789')
-                    c = txt.strip()
-                    if c and c.isdigit():
-                        found_digit = c[0]
-                        break
-                except:
-                    continue
             
+            # Try NO WHITELIST first (PSM 10) as it was robust in debug for 9
+            configs_to_try = [
+                ('--psm 10 --oem 3', "NoWhitelist"),
+                ('--psm 10 --oem 3 -c tessedit_char_whitelist=0123456789', "Standard")
+            ]
+            
+            for name, img_variant in [("eroded", img_eroded), ("original", base_img), ("dilated", img_dilated)]:
+                for cfg, cfg_name in configs_to_try:
+                    try:
+                        txt = pytesseract.image_to_string(img_variant, config=cfg)
+                        c = txt.strip()
+                        if c and c.isdigit():
+                            found_digit = c[0]
+                            break
+                    except:
+                        continue
+                if found_digit != "?": break
+            
+            # --- Heuristic Correction ---
+            # Check Aspect Ratio for '1' vs '7' or '1' vs 'T' confusion
+            # '1' is very thin. '7' is wider.
+            if found_digit == '7' or found_digit == '?':
+                # Re-check bounding box aspect ratio
+                # uw/uh
+                ratio = uw / uh if uh > 0 else 1
+                if ratio < 0.4: # Very thin
+                    found_digit = '1'
+
             if found_digit == "?":
                 # Fallback: Raw OCR + Typo Correction
                 # Tesseract often misclassifies handwritten digits as letters/symbols
@@ -836,14 +856,14 @@ class OMRProcessor:
                     raw_txt = pytesseract.image_to_string(base_img, config='--psm 10 --oem 3').strip()
                     
                     corrections = {
-                        '|': '1', 'I': '1', 'l': '1', '!': '1', ']': '1',
+                        '|': '1', 'I': '1', 'l': '1', '!': '1', ']': '1', 't': '1', 'f': '1',
                         'A': '4', 'H': '4', 
                         'b': '6', 'G': '6',
-                        'g': '9', 'q': '9',
+                        'g': '9', 'q': '9', 'P': '9',
                         'S': '5', 's': '5', '$': '5',
                         'Z': '2', 'z': '2',
-                        'B': '8',
-                        'O': '0', 'D': '0'
+                        'B': '8', '&': '8',
+                        'O': '0', 'D': '0', 'Q': '0', 'o': '0'
                     }
                     
                     # Direct match
