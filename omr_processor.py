@@ -317,7 +317,7 @@ class OMRProcessor:
         
         # Debug Gaps
         all_large_gaps = [g[0] for g in gaps if g[0] > 30]
-        print(f"DEBUG: All X-gaps > 30px: {all_large_gaps}")
+        # print(f"DEBUG: All X-gaps > 30px: {all_large_gaps}")
         
         column_gaps = [g for g in gaps if g[0] > 60]
         
@@ -430,8 +430,8 @@ class OMRProcessor:
         b_style = self.template.get('bubbleStyle', {})
         fill_threshold = b_style.get('fillThreshold', 0.5) # Increased default slightly
         
-        print("\n--- Evaluating Bubbles ---")
-        print(f"Fill Threshold: {fill_threshold}")
+        # print("\n--- Evaluating Bubbles ---")
+        # print(f"Fill Threshold: {fill_threshold}")
         
         filled_count = 0
         
@@ -465,7 +465,7 @@ class OMRProcessor:
         
         # Checking if template has a value, else use 0.35
         t_thresh = b_style.get('fillThreshold', 0.35)
-        print(f"Using Threshold: {t_thresh}")
+        # print(f"Using Threshold: {t_thresh}")
         
         # Debug specific user claimed bubbles
         # target_qs = [2, 7, 37]
@@ -481,7 +481,7 @@ class OMRProcessor:
             if is_filled:
                 filled_count += 1
                 
-        print(f"Total Bubbles Evaluated: {len(bubbles)}. Filled: {filled_count}")
+        # print(f"Total Bubbles Evaluated: {len(bubbles)}. Filled: {filled_count}")
         return bubbles
 
     def _get_roll_roi_boxes(self, image):
@@ -584,7 +584,7 @@ class OMRProcessor:
                         curr_group = [x]
                 final_lines.append(sum(curr_group)//len(curr_group))
             
-            print(f"DEBUG: Found {len(final_lines)} Vertical Lines: {final_lines}")
+            # print(f"DEBUG: Found {len(final_lines)} Vertical Lines: {final_lines}")
             
             # We expect ~10 lines for 9 boxes (or more if double borders). 
             # If we generally see 9+ lines, we can try to form boxes.
@@ -603,11 +603,11 @@ class OMRProcessor:
             if len(valid_intervals) >= 4: # at least 4 consistent gaps
                 valid_intervals.sort()
                 median_w = valid_intervals[len(valid_intervals)//2]
-                print(f"DEBUG: Calculated Median Cell Width: {median_w}")
+                # print(f"DEBUG: Calculated Median Cell Width: {median_w}")
                 calculated_cell_w = median_w
             
             if calculated_cell_w:
-                print("DEBUG: Using Dynamic Cell Width + Center Alignment.")
+                # print("DEBUG: Using Dynamic Cell Width + Center Alignment.")
                 cell_w = calculated_cell_w
                 grid_total_w = digits_count * cell_w
                 
@@ -626,7 +626,7 @@ class OMRProcessor:
                 return boxes
 
             # --- FALLBACK (If lines detection fails) ---
-            print("DEBUG: Line detection insufficient. Using robust fallback.")
+            # print("DEBUG: Line detection insufficient. Using robust fallback.")
             
             # Use the verified offset from manual testing
             # Start X = Origin - 68

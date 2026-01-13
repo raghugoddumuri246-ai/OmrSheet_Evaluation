@@ -108,7 +108,8 @@ def main():
         print("Warning: OCR skipped (pytesseract not found).")
         ocr_roll = ""
     elif ocr_roll:
-        print(f"OCR Extracted Roll No: {ocr_roll}")
+        # print(f"OCR Extracted Roll No: {ocr_roll}")
+        pass
     
     final_output['ocrRollNumber'] = ocr_roll
     # ----------------------
