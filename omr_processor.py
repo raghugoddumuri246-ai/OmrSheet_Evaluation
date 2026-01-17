@@ -762,6 +762,8 @@ class OMRProcessor:
             cell_h, cell_w = cell_roi.shape
             
             valid_candidates = []
+            uw, uh = 0, 0
+
             for c in c_cnts:
                 cx, cy, cw, ch = cv2.boundingRect(c)
                 if cw < 2 or ch < 10: continue
@@ -797,9 +799,16 @@ class OMRProcessor:
                 dg_mx = local_x + pad_x + u_x1
                 dg_my = local_y + u_y1
                 cv2.rectangle(debug_strip, (dg_mx, dg_my), (dg_mx+uw, dg_my+uh), (0, 255, 0), 1)
+                
+                # Save individual digit for debugging
+                cv2.imwrite(f"{debug_dir}/digit_{idx}.png", best_digit_img)
 
-            if best_digit_img is None:
-                best_digit_img = c_thresh
+            else:
+
+                # No valid digits found in this box
+                detected_res.append("?")
+                continue
+
             
             # OCR Strategy: Multi-Pass
             # Some digits (1, 4, 6) need thickening (erosion).

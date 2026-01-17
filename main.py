@@ -6,7 +6,7 @@ import numpy as np
 
 def main():
     template_path = 'template.json'
-    pdf_path = 'final_omr.pdf'
+    pdf_path = 'omr 120.pdf'
     
     if not os.path.exists(template_path):
         print("Error: template.json not found.")
@@ -133,7 +133,7 @@ def main():
             final_output['responses'][q] = ""
 
     # Load Answer Key
-    answer_key_path = 'answer_key.json'
+    answer_key_path = 'answer_key_120.json'
     if os.path.exists(answer_key_path):
         with open(answer_key_path, 'r') as f:
             full_key = json.load(f)
@@ -216,8 +216,9 @@ def main():
     print(f" Detected Roll No  : {final_output['rollNumber'] if final_output['rollNumber'] else 'None'}")
     
     if ocr_roll:
+         ocr_display = "Not Filled" if all(c == '?' for c in ocr_roll) else ocr_roll
          ocr_status = "MATCH" if (final_output['rollNumber'] == ocr_roll) else "MISMATCH"
-         print(f" OCR Extracted     : {ocr_roll}")
+         print(f" OCR Extracted     : {ocr_display}")
          print(f" Roll No Status    : {ocr_status} (OCR Validation)")
 
     print(f"------------------------------------------------")
