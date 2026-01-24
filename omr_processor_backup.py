@@ -425,9 +425,12 @@ class OMRProcessor:
             start_idx = split_idx
         question_cols.append(q_pool[start_idx:])
         
+        
         # Filter out noise columns (e.g. vertical lines detected as bubbles)
         # Real columns have ~48 bubbles (12 rows * 4 opts). Set threshold to 20.
         valid_question_cols = [c for c in question_cols if len(c) > 20]
+        
+        
         
         # print(f"DEBUG: Found {len(question_cols)} raw cols -> {len(valid_question_cols)} valid cols.")
 
@@ -438,6 +441,8 @@ class OMRProcessor:
         field_defaults = self.template.get('fieldDefaults', {})
         def_rows = field_defaults.get('rowsPerBlock', 12)
         def_opts = field_defaults.get('optionsCount', 4)
+        def_labels_gap = field_defaults.get('labelsGap', 56)
+        def_bubbles_gap = field_defaults.get('bubblesGap', 50)
         options_list = ["A", "B", "C", "D", "E"]
         
         for i, (name, conf) in enumerate(sorted_template_blocks):
@@ -456,19 +461,21 @@ class OMRProcessor:
                 dist = abs(med_x - origin_x)
                 if dist < min_dist:
                     min_dist = dist
-                    best_col = col  # Actually use the best match!
-            
-            if best_col is None:
+            if i >= len(valid_question_cols):
                 continue
                 
-            col_cluster = best_col
+            col_cluster = valid_question_cols[i]
             # No sorting needed if we search by Y, but good for debug
             # col_cluster.sort(key=lambda b: b['y']) # Optional
             
             origin_y = conf['origin'][1]
             rows = conf.get('rows', def_rows)
             opts = conf.get('optionsCount', def_opts)
-            labels_gap = conf.get('labelsGap', 56)
+            labels_gap = conf.get('labelsGap', def_labels_gap)
+            
+            
+            
+            
             
             # Dynamic Row Clustering (Restored to fix detection count)
             grid_rows = []
@@ -496,7 +503,7 @@ class OMRProcessor:
                 dist_from_top = first_row_y - origin_y
                 if dist_from_top > (labels_gap * 0.5):
                     missing_rows = int(round(dist_from_top / labels_gap))
-                    # print(f"DEBUG: Col {i} missing {missing_rows} top rows. Padding.")
+                    # print(f"DEBUG: Col {i} ({name}) missing {missing_rows} top rows. First row at Y={first_row_y}, Origin={origin_y}, Gap={labels_gap}")
                     for _ in range(missing_rows):
                         grid_rows.insert(0, []) # Insert empty row
             
@@ -506,10 +513,8 @@ class OMRProcessor:
             for r_idx, row_bubbles in enumerate(grid_rows):
                 row_bubbles.sort(key=lambda b: b['x'])
                 
-                # Formula: Row-major layout (questions go across rows)
-                # Row r_idx, Column i -> Q# = (r_idx * num_columns) + i + 1
-                # With 5 columns total across the sheet
-                q_num = (r_idx * 5) + i + 1
+                # Formula
+                q_num = (r_idx * total_cols_in_layout) + (i + 1)
                 
                 for c_idx, bubble in enumerate(row_bubbles):
                     if c_idx < opts:

@@ -56,41 +56,41 @@
         "optionsCount": 4,
         "rowsPerBlock": 12,
         "bubblesGap": 50,
-        "labelsGap": 56
+        "labelsGap": 86
     },
     "fieldBlocks": {
         "col1": {
             "origin": [
                 204,
-                652
+                902
             ],
             "questionRange": "q1..12"
         },
         "col2": {
             "origin": [
                 570,
-                652
+                902
             ],
             "questionRange": "q13..24"
         },
         "col3": {
             "origin": [
                 936,
-                652
+                902
             ],
             "questionRange": "q25..36"
         },
         "col4": {
             "origin": [
                 1302,
-                652
+                902
             ],
             "questionRange": "q37..48"
         },
         "col5": {
             "origin": [
                 1668,
-                652
+                902
             ],
             "questionRange": "q49..60"
         }

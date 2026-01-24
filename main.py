@@ -6,7 +6,7 @@ import numpy as np
 
 def main():
     template_path = 'template.json'
-    pdf_path = 'test2.pdf'
+    pdf_path = 'final_omr.pdf'
     
     if not os.path.exists(template_path):
         print("Error: template.json not found.")
