@@ -1,0 +1,128 @@
+1. Bubble Styling (OmrBubble)
+File: src/components/OMR/OmrBubble/OmrBubble.module.css
+
+Width: 14px
+Height: 14px
+Border: 1px solid (using --OMR_Color variable)
+Border Radius: 50% (circular)
+Font Size: 10px
+Font Weight: 500
+Display: Flex (centered content)
+
+
+2. Question Row Layout (McqOptions)
+File: src/components/OMR/McqOptions/McqOptions.jsx & .module.css
+
+Container Width: 146px
+Border: 1px solid (using --OMR_Color)
+Padding: 0.2rem 0.3rem
+Display: Flex (horizontal layout)
+Alignment: Center-aligned items
+
+
+3. Box Grid (OmrBoxGrid)
+File: src/components/OMR/OmrBoxGrid/OmrBoxGrid.jsx & .module.css
+
+Box Width: 20px
+Box Height: 28px
+Border: 1px left border (using --OMR_Color)
+Display: Flex (horizontal layout)
+Default Boxes: 6 (configurable via boxes prop)
+
+
+4. Integer Input (IntegerOmr)
+File: src/components/OMR/IntegerOmr/IntegerOmr.jsx & .module.css
+
+Container Width: 146px
+Border: 1px solid (using --OMR_Color)
+Display: Flex column
+Alignment: Center-aligned
+
+OMR Sheet Dimensions
+Main Container (OmrSheet)
+File: src/pages/OmrSheet/OmrSheet.module.css
+Width: 210mm (Standard A4 paper width)
+Padding: 0 4mm (4mm padding on left and right)
+Box Sizing: border-box (padding included in width)
+Background: White
+OMR Header
+Width: 100% (of parent container)
+Display: Flex
+Justify Content: Space between
+OMR Body
+Display: Flex
+Flex Wrap: Wrap
+Gap: 0.75rem between items
+Justify Content: Flex-start
+Question Rows (McqOptions)
+Width: 146px (fixed width for each question row)
+Border: 1px solid (using --OMR_Color)
+Box Grid (OmrBoxGrid)
+Box Width: 20px
+Box Height: 28px
+Default Boxes: 6 (resulting in ~120px width + borders)
+
+
+5. Main OMR Sheet (OmrSheet)
+File: src/pages/OmrSheet/OmrSheet.jsx & .module.css
+
+Layout: Vertical stack of questions
+Sections:
+Header section (OmrHeader)
+Questions section (McqOptions)
+Integer questions section (IntegerOmr)
+
+
+6. Global OMR Styling
+File: src/index.css
+
+--OMR_Color: #e6007e (pink/magenta)
+--OMR_Border_Width: 1px
+
+
+7. Common OMR Components
+OmrHeader: Top section of the OMR sheet
+TestBookletCode: For test identification
+RollNumberSection: For student roll number input
+SignatureContainer: For signatures
+OmrInstructions: Instructions section
+Layout Flow:
+Each question row is a McqOptions component
+Each option within a question is an OmrBubble
+Integer questions use IntegerOmr with OmrBoxGrid for digit input
+All components share consistent styling through CSS variables
+
+
+3. Box Grid (OmrBoxGrid)
+File: src/components/OMR/OmrBoxGrid/OmrBoxGrid.jsx & .module.css
+
+Purpose: The OmrBoxGrid component is used for numeric input fields in the OMR sheet, typically for:
+
+Roll numbers
+Student IDs
+Any numeric identification
+Integer answers (as seen in the IntegerOmr component)
+Visual Representation:
+
+[ ][ ][ ][ ][ ][ ]  (6 boxes by default)
+Key Properties:
+
+Box Dimensions (20px × 28px): Taller than wide to accommodate digits
+Horizontal Layout: Numbers flow from left to right
+Borders: Only left borders are shown (except first box) for clean separation
+Configurable Count: Defaults to 6 boxes but can be customized via props
+Usage in OMR Sheet:
+
+For Student Identification:
+Used to input roll numbers or student IDs
+Each box represents one digit (0-9)
+Example: [1][2][3][4][5][6] for student ID 123456
+For Integer Answers:
+Used in the IntegerOmr component
+Each box can be filled with a single digit
+Example for answer "42": [ ][ ][ ][ ][4][2]
+For Test Codes:
+Can be used to input test/paper codes
+Helps in identifying different test versions
+
+

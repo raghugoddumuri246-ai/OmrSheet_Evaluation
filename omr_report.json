@@ -1,0 +1,674 @@
+{
+  "rollNumber": "934601182",
+  "testBookletCode": "",
+  "responses": {
+    "21": "A",
+    "26": "B",
+    "31": "C",
+    "36": "D",
+    "41": "A",
+    "46": "",
+    "51": "",
+    "56": "",
+    "61": "",
+    "66": "",
+    "71": "",
+    "76": "",
+    "22": "A",
+    "27": "B",
+    "32": "C",
+    "37": "D",
+    "42": "MULTIPLE",
+    "47": "",
+    "52": "",
+    "57": "",
+    "62": "",
+    "67": "",
+    "72": "",
+    "77": "",
+    "23": "",
+    "28": "A",
+    "33": "B",
+    "38": "C",
+    "43": "",
+    "48": "",
+    "53": "",
+    "58": "",
+    "63": "",
+    "68": "",
+    "73": "",
+    "78": "",
+    "14": "C",
+    "19": "A",
+    "24": "B",
+    "29": "C",
+    "34": "D",
+    "39": "",
+    "44": "",
+    "49": "",
+    "54": "",
+    "59": "",
+    "64": "",
+    "69": "",
+    "74": "",
+    "30": "A",
+    "35": "B",
+    "40": "C",
+    "45": "D",
+    "50": "",
+    "55": "",
+    "60": "",
+    "65": "",
+    "70": "",
+    "75": "",
+    "80": "",
+    "85": ""
+  },
+  "summary": {
+    "total_questions": 85,
+    "correct": 10,
+    "wrong": 12,
+    "unanswered": 63,
+    "score": 10,
+    "roll_match_ocr": "N/A"
+  },
+  "rollValidation": "OK",
+  "ocrRollNumber": "",
+  "details": [
+    {
+      "question": 1,
+      "marked": "",
+      "correct": "A",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 2,
+      "marked": "",
+      "correct": "A",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 3,
+      "marked": "",
+      "correct": "A",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 4,
+      "marked": "",
+      "correct": "A",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 5,
+      "marked": "",
+      "correct": "A",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 6,
+      "marked": "",
+      "correct": "B",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 7,
+      "marked": "",
+      "correct": "B",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 8,
+      "marked": "",
+      "correct": "B",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 9,
+      "marked": "",
+      "correct": "B",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 10,
+      "marked": "",
+      "correct": "B",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 11,
+      "marked": "",
+      "correct": "C",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 12,
+      "marked": "",
+      "correct": "C",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 13,
+      "marked": "",
+      "correct": "C",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 14,
+      "marked": "C",
+      "correct": "C",
+      "status": "CORRECT",
+      "reason": ""
+    },
+    {
+      "question": 15,
+      "marked": "",
+      "correct": "C",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 16,
+      "marked": "",
+      "correct": "D",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 17,
+      "marked": "",
+      "correct": "D",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 18,
+      "marked": "",
+      "correct": "D",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 19,
+      "marked": "A",
+      "correct": "D",
+      "status": "WRONG",
+      "reason": ""
+    },
+    {
+      "question": 20,
+      "marked": "",
+      "correct": "D",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 21,
+      "marked": "A",
+      "correct": "A",
+      "status": "CORRECT",
+      "reason": ""
+    },
+    {
+      "question": 22,
+      "marked": "A",
+      "correct": "A",
+      "status": "CORRECT",
+      "reason": ""
+    },
+    {
+      "question": 23,
+      "marked": "",
+      "correct": "A",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 24,
+      "marked": "B",
+      "correct": "A",
+      "status": "WRONG",
+      "reason": ""
+    },
+    {
+      "question": 25,
+      "marked": "",
+      "correct": "A",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 26,
+      "marked": "B",
+      "correct": "B",
+      "status": "CORRECT",
+      "reason": ""
+    },
+    {
+      "question": 27,
+      "marked": "B",
+      "correct": "B",
+      "status": "CORRECT",
+      "reason": ""
+    },
+    {
+      "question": 28,
+      "marked": "A",
+      "correct": "B",
+      "status": "WRONG",
+      "reason": ""
+    },
+    {
+      "question": 29,
+      "marked": "C",
+      "correct": "B",
+      "status": "WRONG",
+      "reason": ""
+    },
+    {
+      "question": 30,
+      "marked": "A",
+      "correct": "B",
+      "status": "WRONG",
+      "reason": ""
+    },
+    {
+      "question": 31,
+      "marked": "C",
+      "correct": "C",
+      "status": "CORRECT",
+      "reason": ""
+    },
+    {
+      "question": 32,
+      "marked": "C",
+      "correct": "C",
+      "status": "CORRECT",
+      "reason": ""
+    },
+    {
+      "question": 33,
+      "marked": "B",
+      "correct": "C",
+      "status": "WRONG",
+      "reason": ""
+    },
+    {
+      "question": 34,
+      "marked": "D",
+      "correct": "C",
+      "status": "WRONG",
+      "reason": ""
+    },
+    {
+      "question": 35,
+      "marked": "B",
+      "correct": "C",
+      "status": "WRONG",
+      "reason": ""
+    },
+    {
+      "question": 36,
+      "marked": "D",
+      "correct": "D",
+      "status": "CORRECT",
+      "reason": ""
+    },
+    {
+      "question": 37,
+      "marked": "D",
+      "correct": "D",
+      "status": "CORRECT",
+      "reason": ""
+    },
+    {
+      "question": 38,
+      "marked": "C",
+      "correct": "D",
+      "status": "WRONG",
+      "reason": ""
+    },
+    {
+      "question": 39,
+      "marked": "",
+      "correct": "D",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 40,
+      "marked": "C",
+      "correct": "D",
+      "status": "WRONG",
+      "reason": ""
+    },
+    {
+      "question": 41,
+      "marked": "A",
+      "correct": "A",
+      "status": "CORRECT",
+      "reason": ""
+    },
+    {
+      "question": 42,
+      "marked": "MULTIPLE",
+      "correct": "A",
+      "status": "INVALID_MULTIPLE",
+      "reason": "Multiple options filled"
+    },
+    {
+      "question": 43,
+      "marked": "",
+      "correct": "A",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 44,
+      "marked": "",
+      "correct": "A",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 45,
+      "marked": "D",
+      "correct": "A",
+      "status": "WRONG",
+      "reason": ""
+    },
+    {
+      "question": 46,
+      "marked": "",
+      "correct": "B",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 47,
+      "marked": "",
+      "correct": "B",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 48,
+      "marked": "",
+      "correct": "B",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 49,
+      "marked": "",
+      "correct": "B",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 50,
+      "marked": "",
+      "correct": "B",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 51,
+      "marked": "",
+      "correct": "C",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 52,
+      "marked": "",
+      "correct": "C",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 53,
+      "marked": "",
+      "correct": "C",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 54,
+      "marked": "",
+      "correct": "C",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 55,
+      "marked": "",
+      "correct": "C",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 56,
+      "marked": "",
+      "correct": "D",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 57,
+      "marked": "",
+      "correct": "D",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 58,
+      "marked": "",
+      "correct": "D",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 59,
+      "marked": "",
+      "correct": "D",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 60,
+      "marked": "",
+      "correct": "D",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 61,
+      "marked": "",
+      "correct": "",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 62,
+      "marked": "",
+      "correct": "",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 63,
+      "marked": "",
+      "correct": "",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 64,
+      "marked": "",
+      "correct": "",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 65,
+      "marked": "",
+      "correct": "",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 66,
+      "marked": "",
+      "correct": "",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 67,
+      "marked": "",
+      "correct": "",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 68,
+      "marked": "",
+      "correct": "",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 69,
+      "marked": "",
+      "correct": "",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 70,
+      "marked": "",
+      "correct": "",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 71,
+      "marked": "",
+      "correct": "",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 72,
+      "marked": "",
+      "correct": "",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 73,
+      "marked": "",
+      "correct": "",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 74,
+      "marked": "",
+      "correct": "",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 75,
+      "marked": "",
+      "correct": "",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 76,
+      "marked": "",
+      "correct": "",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 77,
+      "marked": "",
+      "correct": "",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 78,
+      "marked": "",
+      "correct": "",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 79,
+      "marked": "",
+      "correct": "",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 80,
+      "marked": "",
+      "correct": "",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 81,
+      "marked": "",
+      "correct": "",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 82,
+      "marked": "",
+      "correct": "",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 83,
+      "marked": "",
+      "correct": "",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 84,
+      "marked": "",
+      "correct": "",
+      "status": "UNANSWERED",
+      "reason": ""
+    },
+    {
+      "question": 85,
+      "marked": "",
+      "correct": "",
+      "status": "UNANSWERED",
+      "reason": ""
+    }
+  ]
+}

@@ -1,0 +1,127 @@
+{
+    "pageDimensions": [
+        2480,
+        3508
+    ],
+    "bubbleDimensions": [
+        44,
+        44
+    ],
+    "bubbleStyle": {
+        "shape": "circle",
+        "fillThreshold": 0.50,
+        "minFillArea": 600
+    },
+    "headerBlocks": {
+        "rollNumber": {
+            "origin": [
+                210,
+                327
+            ],
+            "digits": 9,
+            "rows": 10,
+            "labels": [
+                "0",
+                "1",
+                "2",
+                "3",
+                "4",
+                "5",
+                "6",
+                "7",
+                "8",
+                "9"
+            ],
+            "labelsGap": 54,
+            "digitsGap": 56,
+            "fieldType": "QTYPE_INTEGER"
+        },
+        "testBookletCode": {
+            "origin": [
+                1750,
+                327
+            ],
+            "options": [
+                "A",
+                "B",
+                "C",
+                "D"
+            ],
+            "bubblesGap": 48,
+            "fieldType": "QTYPE_MCQ4"
+        }
+    },
+    "fieldDefaults": {
+        "fieldType": "QTYPE_MCQ4",
+        "optionsCount": 4,
+        "rowsPerBlock": 12,
+        "bubblesGap": 50,
+        "labelsGap": 56
+    },
+    "fieldBlocks": {
+        "col1": {
+            "origin": [
+                204,
+                652
+            ],
+            "questionRange": "q1..12"
+        },
+        "col2": {
+            "origin": [
+                570,
+                652
+            ],
+            "questionRange": "q13..24"
+        },
+        "col3": {
+            "origin": [
+                936,
+                652
+            ],
+            "questionRange": "q25..36"
+        },
+        "col4": {
+            "origin": [
+                1302,
+                652
+            ],
+            "questionRange": "q37..48"
+        },
+        "col5": {
+            "origin": [
+                1668,
+                652
+            ],
+            "questionRange": "q49..60"
+        }
+    },
+    "ignoreZones": [
+        {
+            "name": "candidateName",
+            "area": [
+                300,
+                420,
+                1200,
+                500
+            ]
+        },
+        {
+            "name": "instructions",
+            "area": [
+                150,
+                2600,
+                2300,
+                3400
+            ]
+        }
+    ],
+    "preProcessors": [
+        {
+            "name": "Resize",
+            "options": {
+                "width": 2480,
+                "height": 3508
+            }
+        }
+    ]
+}
