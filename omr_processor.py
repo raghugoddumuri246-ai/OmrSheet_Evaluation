@@ -103,6 +103,79 @@ class OMRProcessor:
         # print(f"DEBUG: Kept {len(final_bubbles)} unique bubbles after NMS (removed {len(candidates) - len(final_bubbles)} duplicates).")
         return final_bubbles
 
+    def order_points(self, pts):
+        """
+        Orders coordinates: top-left, top-right, bottom-right, bottom-left.
+        """
+        rect = np.zeros((4, 2), dtype="float32")
+        s = pts.sum(axis=1)
+        rect[0] = pts[np.argmin(s)]
+        rect[2] = pts[np.argmax(s)]
+        diff = np.diff(pts, axis=1)
+        rect[1] = pts[np.argmin(diff)]
+        rect[3] = pts[np.argmax(diff)]
+        return rect
+
+    def align_page(self, image):
+        """
+        Detects the document contour and warps it to fit page_dims.
+        """
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+        edged = cv2.Canny(blurred, 75, 200)
+
+        cnts, _ = cv2.findContours(edged.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+        cnts = sorted(cnts, key=cv2.contourArea, reverse=True)[:5]
+
+        # Calculate total image area
+        h, w = image.shape[:2]
+        total_area = h * w
+        
+        screenCnt = None
+        for c in cnts:
+            area = cv2.contourArea(c)
+            # Filter: Must be at least 10% of the image to be the page
+            if area < (total_area * 0.10):
+                continue
+                
+            peri = cv2.arcLength(c, True)
+            approx = cv2.approxPolyDP(c, 0.02 * peri, True)
+            if len(approx) == 4:
+                screenCnt = approx
+                break
+        
+        if screenCnt is None:
+            # Fallback: Assume the whole image involves the page (maybe just resize)
+            # print(f"Warning: No distinct page contour found (Max Area checked was small). Using resize only.")
+            return cv2.resize(image, self.page_dims)
+
+        # Apply Perspective Transform
+        pts = screenCnt.reshape(4, 2)
+        rect = self.order_points(pts)
+        
+        (tl, tr, br, bl) = rect
+        
+        # Compute width of new image
+        widthA = np.sqrt(((br[0] - bl[0]) ** 2) + ((br[1] - bl[1]) ** 2))
+        widthB = np.sqrt(((tr[0] - tl[0]) ** 2) + ((tr[1] - tl[1]) ** 2))
+        maxWidth = max(int(widthA), int(widthB))
+
+        # Compute height of new image
+        heightA = np.sqrt(((tr[0] - br[0]) ** 2) + ((tr[1] - br[1]) ** 2))
+        heightB = np.sqrt(((tl[0] - bl[0]) ** 2) + ((tl[1] - bl[1]) ** 2))
+        maxHeight = max(int(heightA), int(heightB))
+        
+        # Destination points (using template dims)
+        dst = np.array([
+            [0, 0],
+            [self.page_dims[0] - 1, 0],
+            [self.page_dims[0] - 1, self.page_dims[1] - 1],
+            [0, self.page_dims[1] - 1]], dtype="float32")
+
+        M = cv2.getPerspectiveTransform(rect, dst)
+        warped = cv2.warpPerspective(image, M, self.page_dims)
+        return warped
+
     def resize_image(self, image):
         """
         Resizes image to match the template dimensions.
@@ -116,13 +189,27 @@ class OMRProcessor:
         image = self.resize_image(image)
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-        # Switch to Otsu's Binarization
-        # adaptiveThreshold often fails on solid fills (hollows them out)
-        # Otsu finds the global optimal separation between ink and paper
-        _, thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+        
+        # Switch to Adaptive Thresholding for scanned documents (handling shadows)
+        # Block size ~51 (approx bubble size), C=10
+        thresh = cv2.adaptiveThreshold(blurred, 255, 
+                                     cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+                                     cv2.THRESH_BINARY_INV, 51, 15)
+                                     
+        # Morphological Closing to fill "hollow centers" caused by adaptive threshold
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+        thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel, iterations=2)
+        
         return image, thresh
 
     def get_bubble_coordinates(self):
+        """
+        Parses the template and returns a list of all bubble coordinates.
+        Returns: list of dicts { 'x': int, 'y': int, 'id': str, 'group': str, 'value': str }
+        """
+        bubbles = []
+        
+        # 1. Process Header Blocks
         """
         Parses the template and returns a list of all bubble coordinates.
         Returns: list of dicts { 'x': int, 'y': int, 'id': str, 'group': str, 'value': str }
@@ -224,24 +311,17 @@ class OMRProcessor:
 
     def map_bubbles_to_structure(self, detected_bubbles):
         """
-        Maps detected bubbles to structure using Strict Spatial Zoning.
-        1. Vertical Split: Hardcoded at Y=600 (Based on visual calibration).
-           - Top (<600): Roll Number (Left), Booklet (Right).
-           - Bottom (>=600): Question Columns.
-        2. Horizontal Split (Questions): Auto-cluster into 5 groups using top 4 gaps.
+        Maps detected bubbles to structure using Exclusion Logic.
+        1. Map Header Blocks (Roll, Booklet) from the full pool.
+        2. Remove mapped bubbles from the pool.
+        3. Map Question Blocks using the remaining bubbles.
         """
         mapped_bubbles = []
+        # Keep track of bubbles used by headers to exclude them from questions
+        used_bubble_ids = set()
         
-        # Strict Y-Split
-        # Increased to 900 to ensure full Roll Number block (which ends around Y=880) is captured.
-        # This prevents Roll Number tail from being confused with Question Column 1.
-        HEADER_Y_LIMIT = 900
-        
-        # Split pool
-        header_pool = [b for b in detected_bubbles if b['y'] < HEADER_Y_LIMIT]
-        question_pool = [b for b in detected_bubbles if b['y'] >= HEADER_Y_LIMIT]
-        
-        # print(f"DEBUG: Strict Y-Split at {HEADER_Y_LIMIT}. Header Bubbles: {len(header_pool)}, Question Bubbles: {len(question_pool)}")
+        # Sort full pool by Y for processing
+        all_pool = sorted(detected_bubbles, key=lambda b: b['y'])
         
         # --- 1. Map Roll Number (Top-Left) ---
         header_blocks = self.template.get('headerBlocks', {})
@@ -251,58 +331,80 @@ class OMRProcessor:
             digits = conf.get('digits', 9) 
             labels = conf.get('labels', [str(i) for i in range(rows)])
             
-            # Filter: X < 1100 from Header Pool
-            roll_candidates = [b for b in header_pool if b['x'] < 1100]
-            roll_candidates.sort(key=lambda b: b['x'])
+            # Nearest Neighbor Column Assignment
+            origin_x = conf.get('origin', [0, 0])[0]
+            # Restrict search to Header area generally (e.g. Y < 1000) to optimize
+            # But allow loose search to handle shift
+            digits_gap = conf.get('digitsGap', 48)
             
-            # Cluster columns (Gap > 30)
-            cols = []
-            if roll_candidates:
-                curr_col = [roll_candidates[0]]
-                for i in range(1, len(roll_candidates)):
-                    b = roll_candidates[i]
-                    if b['x'] - roll_candidates[i-1]['x'] > 30: 
-                         cols.append(curr_col)
-                         curr_col = []
-                    curr_col.append(b)
-                cols.append(curr_col)
+            # Filter candidates for Roll Number (Limit X to left side, Y to top half)
+            roll_candidates = [b for b in all_pool if b['x'] < 1100 and b['y'] < 1200]
             
-            # print(f"DEBUG: Found {len(cols)} columns in Roll Number zone.")
+            col_buckets = {i: [] for i in range(digits)}
             
-            for d_idx, col_bubbles in enumerate(cols):
-                if d_idx >= digits: break
+            for b in roll_candidates:
+                dist = (b['x'] - origin_x) / digits_gap
+                d_idx = int(round(dist))
+                
+                if 0 <= d_idx < digits:
+                    col_buckets[d_idx].append(b)
+            
+            for d_idx in range(digits):
+                col_bubbles = col_buckets[d_idx]
                 col_bubbles.sort(key=lambda b: b['y'])
+                
                 for r_idx, b in enumerate(col_bubbles):
                     if r_idx < rows:
                         lbl = labels[r_idx] if r_idx < len(labels) else str(r_idx)
-                        b['id'] = f'roll_col{d_idx}_val{lbl}'
-                        b['group'] = 'rollNumber'
-                        b['value'] = lbl
-                        mapped_bubbles.append(b)
+                        b_copy = b.copy()
+                        b_copy['id'] = f'roll_col{d_idx}_val{lbl}'
+                        b_copy['group'] = 'rollNumber'
+                        b_copy['value'] = lbl
+                        mapped_bubbles.append(b_copy)
+                        
+                        # Mark strict match as used (using original coords as ID)
+                        used_bubble_ids.add((b['x'], b['y']))
 
         # --- 2. Map Booklet (Top-Right) ---
         if 'testBookletCode' in header_blocks:
              conf = header_blocks['testBookletCode']
              options = conf.get('options', [])
              
-             # Filter: X > 1100 from Header Pool
-             booklet_candidates = [b for b in header_pool if b['x'] > 1100]
+             # Filter: X > 1100, Y < 1200
+             booklet_candidates = [b for b in all_pool if b['x'] > 1100 and b['y'] < 1200]
              booklet_candidates.sort(key=lambda b: b['x'])
              
              for i, b in enumerate(booklet_candidates):
                  if i < len(options):
                      opt = options[i]
-                     b['id'] = f'testBooklet_{opt}'
-                     b['group'] = 'testBookletCode'
-                     b['value'] = opt
-                     mapped_bubbles.append(b)
+                     b_copy = b.copy()
+                     b_copy['id'] = f'testBooklet_{opt}'
+                     b_copy['group'] = 'testBookletCode'
+                     b_copy['value'] = opt
+                     mapped_bubbles.append(b_copy)
+                     used_bubble_ids.add((b['x'], b['y']))
 
-        # --- 3. Process Questions (Bottom Area) ---
+        # --- 3. Process Questions (Remaining Bubbles) ---
+        # Filter out used bubbles
+        question_pool = [b for b in all_pool if (b['x'], b['y']) not in used_bubble_ids]
+        
+        # Also enforce a loose Header Y Limit (e.g. > 500) to avoid noise from logos/text at very top
+        # But critical: Q1 might be at 650, so keep limit low.
+        # Calculate dynamic Y cutoff based on template field blocks to avoid Header interference
+        field_blocks = self.template.get('fieldBlocks', {})
+        if field_blocks:
+            min_y_origin = min([conf['origin'][1] for conf in field_blocks.values()])
+            # Use a safe buffer (e.g. 50px above the first expected row)
+            cutoff_y = min_y_origin - 50
+        else:
+            cutoff_y = 500
+
+        question_pool = [b for b in question_pool if b['y'] > cutoff_y]
+        
         q_pool = question_pool[:]
         q_pool.sort(key=lambda b: b['x'])
         
-        # We need to find the column structure dynamically to support 60/90/120 questions.
-        # Instead of hardcoding 5 columns, we detect significant X-gaps.
+        # We need to find the column structure dynamically
         if len(q_pool) < 20:
              print("Warning: Too few bubbles for questions.")
              return mapped_bubbles
@@ -311,21 +413,10 @@ class OMRProcessor:
         for i in range(1, len(q_pool)):
             gaps.append((q_pool[i]['x'] - q_pool[i-1]['x'], i))
             
-        # Filter for "Column Separator" gaps (typically > 80px)
-        # Bubble gap is ~40px. Column gap is > 100px.
-        # LOWERED to 60 for 90-question sheet which might be tighter.
-        
-        # Debug Gaps
-        all_large_gaps = [g[0] for g in gaps if g[0] > 30]
-        print(f"DEBUG: All X-gaps > 30px: {all_large_gaps}")
-        
         column_gaps = [g for g in gaps if g[0] > 60]
         
-        # Sort by index to get left-to-right splits
         split_indices = sorted([g[1] for g in column_gaps])
-        
         num_detected_cols = len(split_indices) + 1
-        # print(f"DEBUG: Detected {num_detected_cols} Question Columns (Gaps: {[int(g[0]) for g in column_gaps]})")
         
         question_cols = []
         start_idx = 0
@@ -333,9 +424,20 @@ class OMRProcessor:
             question_cols.append(q_pool[start_idx:split_idx])
             start_idx = split_idx
         question_cols.append(q_pool[start_idx:])
+        
+        # Filter out noise columns (e.g. vertical lines detected as bubbles)
+        # Real columns have ~48 bubbles (12 rows * 4 opts). Set threshold to 20.
+        valid_question_cols = [c for c in question_cols if len(c) > 20]
+        
+        print(f"\n=== COLUMN DETECTION DEBUG ===")
+        print(f"Total question bubbles in pool: {len(question_pool)}")
+        print(f"Found {len(question_cols)} raw columns -> {len(valid_question_cols)} valid columns")
+        for idx, col in enumerate(question_cols):
+            status = "VALID" if len(col) > 20 else "FILTERED OUT"
+            print(f"  Column {idx}: {len(col)} bubbles - {status}")
+        print(f"==============================\n")
 
         # Map to Template Field Blocks dynamically
-        # We assume the columns map to "Block 1", "Block 2"...
         field_blocks = self.template.get('fieldBlocks', {})
         sorted_template_blocks = sorted(field_blocks.items(), key=lambda item: item[1]['origin'][0])
         
@@ -344,21 +446,48 @@ class OMRProcessor:
         def_opts = field_defaults.get('optionsCount', 4)
         options_list = ["A", "B", "C", "D", "E"]
         
+        # Track which detected columns have been used
+        remaining_cols = valid_question_cols.copy()
+        
         for i, (name, conf) in enumerate(sorted_template_blocks):
-            if i >= len(question_cols):
-                # If we detected fewer columns than blocks, stop or continue
-                # print(f"Warning: No detected column found for block '{name}'")
-                continue
-                
-            col_cluster = question_cols[i]
-            col_cluster.sort(key=lambda b: b['y'])
+            origin_x = conf['origin'][0]
             
+            # Find closest detected column to this expected origin
+            best_col = None
+            best_col_idx = None
+            min_dist = float('inf')
+            
+            for col_idx, col in enumerate(remaining_cols):
+                # Get median X for stability
+                xs = [b['x'] for b in col]
+                if not xs: continue
+                med_x = sorted(xs)[len(xs)//2]
+                
+                dist = abs(med_x - origin_x)
+                if dist < min_dist:
+                    min_dist = dist
+                    best_col = col
+                    best_col_idx = col_idx
+            
+            if best_col is None:
+                continue
+            
+            # Remove used column from remaining pool
+            remaining_cols.pop(best_col_idx)
+                
+            col_cluster = best_col
+            # No sorting needed if we search by Y, but good for debug
+            # col_cluster.sort(key=lambda b: b['y']) # Optional
+            
+            origin_y = conf['origin'][1]
             rows = conf.get('rows', def_rows)
             opts = conf.get('optionsCount', def_opts)
+            labels_gap = conf.get('labelsGap', 56)
             
-            # Dynamic Row Clustering
+            # Dynamic Row Clustering (Restored to fix detection count)
             grid_rows = []
             if col_cluster:
+                col_cluster.sort(key=lambda b: b['y'])
                 curr_row = [col_cluster[0]]
                 for b_idx in range(1, len(col_cluster)):
                     b = col_cluster[b_idx]
@@ -368,24 +497,79 @@ class OMRProcessor:
                     curr_row.append(b)
                 grid_rows.append(curr_row)
             
-            # Use dynamic column count for numbering
-            total_cols_in_layout = num_detected_cols
+            # Fix for Missing Top Rows (Shift Issue)
+            # If the first detected row is physically lower than the expected Origin,
+            # it means the top row(s) were empty/undetected. We must pad the start.
+            if grid_rows:
+                first_row_y = sum([b['y'] for b in grid_rows[0]]) / len(grid_rows[0])
+                origin_y = conf['origin'][1]
+                
+                # Check how many gaps we missed
+                # If first_y is at 700 and origin is 650 (gap 50), dist 50 -> 1 row missed?
+                # Threshold: if dist > 0.5 * gap
+                dist_from_top = first_row_y - origin_y
+                if dist_from_top > (labels_gap * 0.5):
+                    missing_rows = int(round(dist_from_top / labels_gap))
+                    print(f"DEBUG Col{i} ({name}): First row Y={first_row_y:.1f}, Origin Y={origin_y}, Dist={dist_from_top:.1f}, Missing {missing_rows} rows, Total rows before pad={len(grid_rows)}")
+                    for _ in range(missing_rows):
+                        grid_rows.insert(0, []) # Insert empty row
+                    print(f"       After padding: {len(grid_rows)} rows")
+                else:
+                    print(f"DEBUG Col{i} ({name}): First row Y={first_row_y:.1f}, Origin Y={origin_y}, Dist={dist_from_top:.1f}, No padding needed, Total rows={len(grid_rows)}")
+            
+            # ROW-MAJOR LAYOUT (5 columns across)
+            # Questions arranged horizontally: Q1-5 (row1), Q6-10 (row2), Q11-15 (row3), etc.
+            # Formula: Q# = (row_index * num_columns) + column_index + 1
+            
+            col_position = i  # Which column this is (0=col1, 1=col2, 2=col3, 3=col4, 4=col5)
+            num_columns = 5   # Fixed 5 columns in the OMR layout            
+            
+            # Debug column 3 specifically
+            if i == 2:  # Column 3 (0-indexed)
+                print(f"\n=== COLUMN 3 DETAILED DEBUG ===")
+                print(f"Total rows in grid_rows: {len(grid_rows)}")
+                for r_idx, row_bubbles in enumerate(grid_rows):
+                    q_num_calc = (r_idx * num_columns) + col_position + 1
+                    print(f"  Row {r_idx}: {len(row_bubbles)} bubbles detected (Question {q_num_calc})")
+                print(f"================================\n")
             
             for r_idx, row_bubbles in enumerate(grid_rows):
                 row_bubbles.sort(key=lambda b: b['x'])
                 
-                # q_num calculation dynamic
-                # formula: (RowIndex * TotalCols) + (ColIndex + 1)
-                q_num = (r_idx * total_cols_in_layout) + (i + 1)
+                # SMART PADDING: If row has fewer bubbles than expected, likely missing leftmost (Option A)
+                # Expected: 4 options per row. If we detect 3, insert empty placeholder at start.
+                if len(row_bubbles) < opts and len(row_bubbles) > 0:
+                    missing_count = opts - len(row_bubbles)
+                    
+                    # Create placeholder entries for missing bubbles (likely at the left)
+                    # Need to include all required fields (x, y, r, cx, cy)
+                    for _ in range(missing_count):
+                        placeholder = {
+                            'x': -1, 
+                            'y': -1, 
+                            'r': 10,  # Default radius
+                            'cx': -1,
+                            'cy': -1,
+                            'missing': True
+                        }
+                        row_bubbles.insert(0, placeholder)
+                    
+                    if i == 2 and r_idx < 4:  # Debug column 3, first 4 rows
+                        print(f"  DEBUG: Row {r_idx} (Q{(r_idx * num_columns) + col_position + 1}) padded with {missing_count} missing bubble(s)")
+                
+                # Row-major formula: Q# = (row * 5) + col + 1
+                # Example: Row 2 (r_idx=1), Col 3 (i=2) => Q# = (1*5) + 2 + 1 = Q8
+                q_num = (r_idx * num_columns) + col_position + 1
                 
                 for c_idx, bubble in enumerate(row_bubbles):
                     if c_idx < opts:
                         opt_val = options_list[c_idx] if c_idx < len(options_list) else str(c_idx)
-                        bubble['id'] = f'q{q_num}_{opt_val}'
-                        bubble['group'] = name
-                        bubble['value'] = opt_val
-                        bubble['question'] = q_num
-                        mapped_bubbles.append(bubble)
+                        b_copy = bubble.copy()
+                        b_copy['id'] = f'q{q_num}_{opt_val}'
+                        b_copy['group'] = name
+                        b_copy['value'] = opt_val
+                        b_copy['question'] = q_num
+                        mapped_bubbles.append(b_copy)
                         
         return mapped_bubbles
 
@@ -430,8 +614,8 @@ class OMRProcessor:
         b_style = self.template.get('bubbleStyle', {})
         fill_threshold = b_style.get('fillThreshold', 0.5) # Increased default slightly
         
-        print("\n--- Evaluating Bubbles ---")
-        print(f"Fill Threshold: {fill_threshold}")
+        # print("\n--- Evaluating Bubbles ---")
+        # print(f"Fill Threshold: {fill_threshold}")
         
         filled_count = 0
         
@@ -454,6 +638,10 @@ class OMRProcessor:
             ratio = filled_pixels / total_pixels if total_pixels > 0 else 0
             b['fill_ratio'] = ratio
             
+            if 'roll_col' in b['id']:
+                 pass
+                 # print(f"DEBUG: {b['id']} | Fill Ratio: {ratio:.4f}")
+
         # Analysis for Calibration
         sorted_bubbles = sorted(bubbles, key=lambda b: b['fill_ratio'], reverse=True)
         # print("DEBUG: Top 10 Highest Fill Ratios detected:")
@@ -465,7 +653,7 @@ class OMRProcessor:
         
         # Checking if template has a value, else use 0.35
         t_thresh = b_style.get('fillThreshold', 0.35)
-        print(f"Using Threshold: {t_thresh}")
+        # print(f"Using Threshold: {t_thresh}")
         
         # Debug specific user claimed bubbles
         # target_qs = [2, 7, 37]
@@ -481,7 +669,7 @@ class OMRProcessor:
             if is_filled:
                 filled_count += 1
                 
-        print(f"Total Bubbles Evaluated: {len(bubbles)}. Filled: {filled_count}")
+        # print(f"Total Bubbles Evaluated: {len(bubbles)}. Filled: {filled_count}")
         return bubbles
 
     def _get_roll_roi_boxes(self, image):
@@ -584,7 +772,7 @@ class OMRProcessor:
                         curr_group = [x]
                 final_lines.append(sum(curr_group)//len(curr_group))
             
-            print(f"DEBUG: Found {len(final_lines)} Vertical Lines: {final_lines}")
+            # print(f"DEBUG: Found {len(final_lines)} Vertical Lines: {final_lines}")
             
             # We expect ~10 lines for 9 boxes (or more if double borders). 
             # If we generally see 9+ lines, we can try to form boxes.
@@ -603,11 +791,11 @@ class OMRProcessor:
             if len(valid_intervals) >= 4: # at least 4 consistent gaps
                 valid_intervals.sort()
                 median_w = valid_intervals[len(valid_intervals)//2]
-                print(f"DEBUG: Calculated Median Cell Width: {median_w}")
+                # print(f"DEBUG: Calculated Median Cell Width: {median_w}")
                 calculated_cell_w = median_w
             
             if calculated_cell_w:
-                print("DEBUG: Using Dynamic Cell Width + Center Alignment.")
+                # print("DEBUG: Using Dynamic Cell Width + Center Alignment.")
                 cell_w = calculated_cell_w
                 grid_total_w = digits_count * cell_w
                 
@@ -626,7 +814,7 @@ class OMRProcessor:
                 return boxes
 
             # --- FALLBACK (If lines detection fails) ---
-            print("DEBUG: Line detection insufficient. Using robust fallback.")
+            # print("DEBUG: Line detection insufficient. Using robust fallback.")
             
             # Use the verified offset from manual testing
             # Start X = Origin - 68
@@ -762,6 +950,8 @@ class OMRProcessor:
             cell_h, cell_w = cell_roi.shape
             
             valid_candidates = []
+            uw, uh = 0, 0
+
             for c in c_cnts:
                 cx, cy, cw, ch = cv2.boundingRect(c)
                 if cw < 2 or ch < 10: continue
@@ -797,29 +987,47 @@ class OMRProcessor:
                 dg_mx = local_x + pad_x + u_x1
                 dg_my = local_y + u_y1
                 cv2.rectangle(debug_strip, (dg_mx, dg_my), (dg_mx+uw, dg_my+uh), (0, 255, 0), 1)
+                
+                # Save individual digit for debugging
+                cv2.imwrite(f"{debug_dir}/digit_{idx}.png", best_digit_img)
 
-            if best_digit_img is None:
-                best_digit_img = c_thresh
+            else:
+
+                # No valid digits found in this box
+                detected_res.append("?")
+                continue
+
             
             # OCR Strategy: Multi-Pass
             # Some digits (1, 4, 6) need thickening (erosion).
             # Some digits (9) need to stay thin (original) to avoid closing loops.
             
-            # Prepare Variants
+            # Enhanced OCR Preprocessing for Faint Digits
             base_img = cv2.bitwise_not(best_digit_img)
-            base_img = cv2.resize(base_img, None, fx=3.0, fy=3.0, interpolation=cv2.INTER_CUBIC)
+            
+            # Use aggressive threshold to capture faint digits
+            # Lower threshold value to catch lighter strokes
+            _, base_img = cv2.threshold(base_img, 100, 255, cv2.THRESH_BINARY)
+            
+            # Morphological closing to fill small gaps in faint digits
+            kernel_close = np.ones((3,3), np.uint8)
+            base_img = cv2.morphologyEx(base_img, cv2.MORPH_CLOSE, kernel_close)
+            
+            # Scale up for better OCR (4x for very faint digits)
+            base_img = cv2.resize(base_img, None, fx=4.0, fy=4.0, interpolation=cv2.INTER_CUBIC)
             base_img = cv2.copyMakeBorder(base_img, 20, 20, 20, 20, cv2.BORDER_CONSTANT, value=255)
             
-            kernel = np.ones((2,2),np.uint8)
-            img_eroded = cv2.erode(base_img, kernel, iterations=1) # Thicken
-            img_dilated = cv2.dilate(base_img, kernel, iterations=1) # Thin
+            # Apply another threshold after scaling
+            _, base_img = cv2.threshold(base_img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
             
-            # Try ERODED first (Best for 4, 6, 1)
-            # Try ORIGINAL second (Best for 9)
-            # Try DILATED last (If stroke is too thick)
+            # Thicken strokes with erosion
+            kernel = np.ones((2,2), np.uint8)
+            img_eroded = cv2.erode(base_img, kernel, iterations=2)
             
             found_digit = "?"
-            for name, img_variant in [("eroded", img_eroded), ("original", base_img), ("dilated", img_dilated)]:
+            
+            # Try eroded version first (thickened strokes work best for faint digits)
+            for name, img_variant in [("eroded", img_eroded), ("original", base_img)]:
                 try:
                     txt = pytesseract.image_to_string(img_variant, config='--psm 10 --oem 3 -c tessedit_char_whitelist=0123456789')
                     c = txt.strip()
@@ -827,8 +1035,19 @@ class OMRProcessor:
                         found_digit = c[0]
                         break
                 except:
-                    continue
+                    pass
+                if found_digit != "?": break
             
+            # --- Heuristic Correction ---
+            # Check Aspect Ratio for '1' vs '7' or '1' vs 'T' confusion
+            # '1' is very thin. '7' is wider.
+            if found_digit == '7' or found_digit == '?':
+                # Re-check bounding box aspect ratio
+                # uw/uh
+                ratio = uw / uh if uh > 0 else 1
+                if ratio < 0.4: # Very thin
+                    found_digit = '1'
+
             if found_digit == "?":
                 # Fallback: Raw OCR + Typo Correction
                 # Tesseract often misclassifies handwritten digits as letters/symbols
@@ -836,14 +1055,14 @@ class OMRProcessor:
                     raw_txt = pytesseract.image_to_string(base_img, config='--psm 10 --oem 3').strip()
                     
                     corrections = {
-                        '|': '1', 'I': '1', 'l': '1', '!': '1', ']': '1',
-                        'A': '4', 'H': '4', 
-                        'b': '6', 'G': '6',
-                        'g': '9', 'q': '9',
+                        '|': '1', 'I': '1', 'l': '1', '!': '1', ']': '1', 't': '1', 'f': '1', 'i': '1', 'T': '1',
+                        'A': '4', 'H': '4', 'h': '4', 'K': '4',
+                        'b': '6', 'G': '6', 'e': '6',
+                        'g': '9', 'q': '9', 'P': '9', 'p': '9',
                         'S': '5', 's': '5', '$': '5',
-                        'Z': '2', 'z': '2',
-                        'B': '8',
-                        'O': '0', 'D': '0'
+                        'Z': '2', 'z': '2', 'r': '2',
+                        'B': '8', '&': '8', '%': '8', '@': '8',
+                        'O': '0', 'D': '0', 'Q': '0', 'o': '0', 'a': '0', 'C': '0'
                     }
                     
                     # Direct match

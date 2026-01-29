@@ -6,7 +6,7 @@ import numpy as np
 
 def main():
     template_path = 'template.json'
-    pdf_path = 'omr 120.pdf'
+    pdf_path = 'omr_120_filled.pdf'
     
     if not os.path.exists(template_path):
         print("Error: template.json not found.")
@@ -30,6 +30,9 @@ def main():
         print("Using blank image for demonstration of detection logic.")
         dims = processor.page_dims
         image = np.ones((dims[1], dims[0], 3), dtype=np.uint8) * 255
+
+    # 1. Align/Warp Page
+    image = processor.align_page(image)
 
     # 1. Detect Bubbles Dynamically (The "Green" bubbles)
     print("Scanning for bubbles using Computer Vision...")
@@ -59,15 +62,47 @@ def main():
     roll_bubbles.sort(key=lambda x: x['id']) # Ensure correct digit order if needed
     # Group by column to get digits
     # (Simplified: assuming mapped_bubbles has 'roll_colX_valY')
-    roll_digits = {}
-    for b in roll_bubbles:
-        col_idx = int(b['id'].split('_')[1].replace('col', ''))
-        roll_digits[col_idx] = b['value']
     
     # Construct Roll Number string
-    if roll_digits:
-        final_roll = "".join([roll_digits[i] for i in sorted(roll_digits.keys())])
-        final_output['rollNumber'] = final_roll
+    roll_error_reason = ""
+    roll_cols_detected = {}
+    for b in roll_bubbles:
+        try:
+            col_idx = int(b['id'].split('_')[1].replace('col', ''))
+            if col_idx not in roll_cols_detected:
+                roll_cols_detected[col_idx] = []
+            roll_cols_detected[col_idx].append(b['value'])
+        except (IndexError, ValueError):
+            continue
+
+    if roll_cols_detected:
+        final_roll = ""
+        final_roll_chars = []
+        is_roll_invalid = False
+        
+        # detailed check
+        sorted_cols = sorted(roll_cols_detected.keys())
+        if sorted_cols:
+             max_col = max(sorted_cols) 
+             # We should probably iterate from 1 to max_col (or whatever the start is) to catch missing digits too?
+             # For now, let's stick to the user's specific request: "if one digit gerts two bubbles".
+             
+             for col in sorted_cols:
+                 vals = roll_cols_detected[col]
+                 if len(vals) > 1:
+                     is_roll_invalid = True
+                     roll_error_reason = f"Column {col} has {len(vals)} bubbles filled"
+                     final_roll_chars.append("?") # Placeholder
+                     break # or continue to find more errors? User said "make detected roll number as invalid also add reason"
+                 else:
+                     final_roll_chars.append(vals[0])
+        
+        if is_roll_invalid:
+            final_output['rollNumber'] = "INVALID"
+            final_output['rollValidation'] = roll_error_reason
+        else:
+            final_output['rollNumber'] = "".join(final_roll_chars)
+            final_output['rollValidation'] = "OK"
         
     # --- OCR Validation ---
     print("Performing OCR on Roll Number boxes...")
@@ -77,6 +112,7 @@ def main():
         ocr_roll = ""
     elif ocr_roll:
         print(f"OCR Extracted Roll No: {ocr_roll}")
+        pass
     
     final_output['ocrRollNumber'] = ocr_roll
     # ----------------------
@@ -100,7 +136,7 @@ def main():
             final_output['responses'][q] = ""
 
     # Load Answer Key
-    answer_key_path = 'answer_key_120.json'
+    answer_key_path = 'answer_key.json'
     if os.path.exists(answer_key_path):
         with open(answer_key_path, 'r') as f:
             full_key = json.load(f)
@@ -131,9 +167,11 @@ def main():
         correct = answer_key.get(q_str, "")
         
         status = "UNANSWERED"
+        reason = ""
         if response:
             if response == "MULTIPLE":
-                status = "INVALID"
+                status = "INVALID_MULTIPLE"
+                reason = "Multiple options filled"
                 wrong_count += 1
             elif response == correct:
                 status = "CORRECT"
@@ -148,7 +186,8 @@ def main():
             "question": i,
             "marked": response,
             "correct": correct,
-            "status": status
+            "status": status,
+            "reason": reason
         })
         
     final_output['summary'] = {
@@ -180,8 +219,9 @@ def main():
     print(f" Detected Roll No  : {final_output['rollNumber'] if final_output['rollNumber'] else 'None'}")
     
     if ocr_roll:
+         ocr_display = "Not Filled" if all(c == '?' for c in ocr_roll) else ocr_roll
          ocr_status = "MATCH" if (final_output['rollNumber'] == ocr_roll) else "MISMATCH"
-         print(f" OCR Extracted     : {ocr_roll}")
+         print(f" OCR Extracted     : {ocr_display}")
          print(f" Roll No Status    : {ocr_status} (OCR Validation)")
 
     print(f"------------------------------------------------")
